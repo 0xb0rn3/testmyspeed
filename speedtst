@@ -12,14 +12,14 @@ class SpeedTestApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Internet Speed Test")
-        self.root.geometry("500x600")
+        self.root.geometry("400x500")  # Compact and pixel-perfect size
         self.root.resizable(False, False)
-        self.root.configure(bg="#121212")  # Full dark mode background
+        self.root.configure(bg="#1e1e2f")  # Dark mode background
 
         # Custom Fonts
         self.title_font = font.Font(family="Helvetica", size=22, weight="bold")
-        self.result_font = font.Font(family="Helvetica", size=18, weight="bold")
-        self.sub_font = font.Font(family="Helvetica", size=14)
+        self.result_font = font.Font(family="Helvetica", size=16, weight="bold")
+        self.sub_font = font.Font(family="Helvetica", size=12)
 
         # Initialize variables
         self.download_speed = tk.StringVar(value="0.0 Mbps")
@@ -30,9 +30,9 @@ class SpeedTestApp:
 
     def create_widgets(self):
         # Gradient Background
-        self.canvas = tk.Canvas(self.root, width=500, height=600, bg="#121212", highlightthickness=0)
+        self.canvas = tk.Canvas(self.root, width=400, height=500, bg="#1e1e2f", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
-        self.create_gradient("#121212", "#1e1e2f", 500, 600)
+        self.create_gradient("#1e1e2f", "#2a2a40", 400, 500)
 
         # Title Label
         title_label = tk.Label(
@@ -42,51 +42,106 @@ class SpeedTestApp:
             bg="#1e1e2f",
             fg="#ffffff"
         )
-        title_label.place(relx=0.5, rely=0.1, anchor="center")
+        title_label.place(relx=0.5, rely=0.07, anchor="center")
+
+        # Version Label
+        version_label = tk.Label(
+            self.root,
+            text="v0.2 Stable",
+            font=self.sub_font,
+            bg="#1e1e2f",
+            fg="#bb86fc"
+        )
+        version_label.place(relx=0.5, rely=0.12, anchor="center")
 
         # Loading Animation Canvas
-        self.loading_canvas = tk.Canvas(self.root, width=120, height=120, bg="#1e1e2f", highlightthickness=0)
-        self.loading_canvas.place(relx=0.5, rely=0.3, anchor="center")
+        self.loading_canvas = tk.Canvas(self.root, width=80, height=80, bg="#1e1e2f", highlightthickness=0)
+        self.loading_canvas.place(relx=0.5, rely=0.25, anchor="center")
         self.loading_angle = 0
-        self.animate_loading()
+        self.loading_active = False
 
         # Buttons Frame
         button_frame = tk.Frame(self.root, bg="#1e1e2f")
-        button_frame.place(relx=0.5, rely=0.5, anchor="center")
+        button_frame.place(relx=0.5, rely=0.42, anchor="center")
 
-        # Rounded Button Style
+        # Rounded Button Style (MacOS-like)
         button_style = {
             "font": ("Helvetica", 12),
-            "bg": "#bb86fc",
-            "fg": "#121212",
-            "activebackground": "#3700b3",
+            "bg": "#bb86fc",  # Default button color
+            "fg": "#1e1e2f",
+            "activebackground": "#3700b3",  # Hover color
             "activeforeground": "#ffffff",
             "relief": "flat",
             "padx": 15,
-            "pady": 10,
+            "pady": 8,
             "borderwidth": 0,
             "highlightthickness": 0
         }
 
+        # Tooltip Functionality
+        def create_tooltip(widget, text):
+            tooltip = tk.Toplevel(widget)
+            tooltip.wm_overrideredirect(True)
+            tooltip.wm_geometry("+0+0")
+            label = tk.Label(tooltip, text=text, bg="#1e1e2f", fg="#ffffff", relief="solid", borderwidth=1)
+            label.pack()
+            tooltip.withdraw()
+
+            def show_tooltip(event):
+                x, y, _, _ = widget.bbox("insert")
+                x += widget.winfo_rootx() + 25
+                y += widget.winfo_rooty() + 25
+                tooltip.wm_geometry(f"+{x}+{y}")
+                tooltip.deiconify()
+
+            def hide_tooltip(event):
+                tooltip.withdraw()
+
+            widget.bind("<Enter>", show_tooltip)
+            widget.bind("<Leave>", hide_tooltip)
+
+        # Button Press Animation
+        def on_press(button, default_color):
+            button.config(bg="#ffffff", fg="#1e1e2f")  # Whitish shade when pressed
+
+        def on_release(button, default_color):
+            button.config(bg=default_color, fg="#1e1e2f")  # Restore original color
+
         # Test Buttons
-        self.full_test_button = tk.Button(button_frame, text="Full Test", command=self.run_full_test, **button_style)
-        self.full_test_button.grid(row=0, column=0, padx=10, pady=10)
+        self.full_test_button = tk.Button(button_frame, text="Full Test", **button_style)
+        self.full_test_button.grid(row=0, column=0, padx=10, pady=5)
+        create_tooltip(self.full_test_button, "Run a full speed test (Download, Upload, Ping).")
+        self.full_test_button.bind("<ButtonPress-1>", lambda event: on_press(self.full_test_button, "#bb86fc"))
+        self.full_test_button.bind("<ButtonRelease-1>", lambda event: on_release(self.full_test_button, "#bb86fc"))
+        self.full_test_button.config(command=self.run_full_test)
 
-        self.download_button = tk.Button(button_frame, text="Download Only", command=self.run_download_test, **button_style)
-        self.download_button.grid(row=0, column=1, padx=10, pady=10)
+        self.download_button = tk.Button(button_frame, text="Download Only", **button_style)
+        self.download_button.grid(row=0, column=1, padx=10, pady=5)
+        create_tooltip(self.download_button, "Test download speed only.")
+        self.download_button.bind("<ButtonPress-1>", lambda event: on_press(self.download_button, "#bb86fc"))
+        self.download_button.bind("<ButtonRelease-1>", lambda event: on_release(self.download_button, "#bb86fc"))
+        self.download_button.config(command=self.run_download_test)
 
-        self.upload_button = tk.Button(button_frame, text="Upload Only", command=self.run_upload_test, **button_style)
-        self.upload_button.grid(row=1, column=0, padx=10, pady=10)
+        self.upload_button = tk.Button(button_frame, text="Upload Only", **button_style)
+        self.upload_button.grid(row=1, column=0, padx=10, pady=5)
+        create_tooltip(self.upload_button, "Test upload speed only.")
+        self.upload_button.bind("<ButtonPress-1>", lambda event: on_press(self.upload_button, "#bb86fc"))
+        self.upload_button.bind("<ButtonRelease-1>", lambda event: on_release(self.upload_button, "#bb86fc"))
+        self.upload_button.config(command=self.run_upload_test)
 
-        self.ping_button = tk.Button(button_frame, text="Ping Only", command=self.run_ping_test, **button_style)
-        self.ping_button.grid(row=1, column=1, padx=10, pady=10)
+        self.ping_button = tk.Button(button_frame, text="Ping Only", **button_style)
+        self.ping_button.grid(row=1, column=1, padx=10, pady=5)
+        create_tooltip(self.ping_button, "Test ping latency only.")
+        self.ping_button.bind("<ButtonPress-1>", lambda event: on_press(self.ping_button, "#bb86fc"))
+        self.ping_button.bind("<ButtonRelease-1>", lambda event: on_release(self.ping_button, "#bb86fc"))
+        self.ping_button.config(command=self.run_ping_test)
 
         # Results Frame
         self.results_frame = tk.Frame(self.root, bg="#1e1e2f")
-        self.results_frame.place(relx=0.5, rely=0.7, anchor="center")
+        self.results_frame.place(relx=0.5, rely=0.65, anchor="center")
 
         # Download Icon and Label
-        download_icon = tk.Label(self.results_frame, text="⬇️", font=("Arial", 18), bg="#1e1e2f", fg="#bb86fc")
+        download_icon = tk.Label(self.results_frame, text="⬇️", font=("Arial", 16), bg="#1e1e2f", fg="#bb86fc")
         download_icon.grid(row=0, column=0, padx=10, pady=5, sticky="w")
         self.download_label = tk.Label(
             self.results_frame,
@@ -98,7 +153,7 @@ class SpeedTestApp:
         self.download_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
 
         # Upload Icon and Label
-        upload_icon = tk.Label(self.results_frame, text="⬆️", font=("Arial", 18), bg="#1e1e2f", fg="#bb86fc")
+        upload_icon = tk.Label(self.results_frame, text="⬆️", font=("Arial", 16), bg="#1e1e2f", fg="#bb86fc")
         upload_icon.grid(row=1, column=0, padx=10, pady=5, sticky="w")
         self.upload_label = tk.Label(
             self.results_frame,
@@ -110,7 +165,7 @@ class SpeedTestApp:
         self.upload_label.grid(row=1, column=1, padx=10, pady=5, sticky="w")
 
         # Ping Icon and Label
-        ping_icon = tk.Label(self.results_frame, text="🏓", font=("Arial", 18), bg="#1e1e2f", fg="#bb86fc")
+        ping_icon = tk.Label(self.results_frame, text="🏓", font=("Arial", 16), bg="#1e1e2f", fg="#bb86fc")
         ping_icon.grid(row=2, column=0, padx=10, pady=5, sticky="w")
         self.ping_label = tk.Label(
             self.results_frame,
@@ -120,6 +175,19 @@ class SpeedTestApp:
             fg="#bb86fc"
         )
         self.ping_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
+
+        # Footer Frame
+        footer_frame = tk.Frame(self.root, bg="#1e1e2f")
+        footer_frame.place(relx=0.5, rely=0.95, anchor="center")
+
+        dev_info = tk.Label(
+            footer_frame,
+            text="Developed by 0xb0rn3 | github.com/0xb0rn3",
+            font=self.sub_font,
+            bg="#1e1e2f",
+            fg="#bb86fc"
+        )
+        dev_info.pack()
 
     def create_gradient(self, color1, color2, width, height):
         """Create a gradient background."""
@@ -133,22 +201,30 @@ class SpeedTestApp:
             self.canvas.create_line(0, i, width, i, fill=color)
 
     def animate_loading(self):
-        # Pulsating arc animation
+        if self.loading_active:
+            # Pulsating arc animation
+            self.loading_canvas.delete("all")
+            self.loading_canvas.create_arc(
+                10, 10, 70, 70,
+                start=self.loading_angle,
+                extent=90,
+                outline="#bb86fc",
+                width=6,
+                style="arc"
+            )
+            self.loading_angle = (self.loading_angle + 10) % 360
+            self.root.after(50, self.animate_loading)
+
+    def start_loading(self):
+        self.loading_active = True
+        self.animate_loading()
+
+    def stop_loading(self):
+        self.loading_active = False
         self.loading_canvas.delete("all")
-        self.loading_canvas.create_arc(
-            10, 10, 110, 110,
-            start=self.loading_angle,
-            extent=90,
-            outline="#bb86fc",
-            width=8,
-            style="arc"
-        )
-        self.loading_angle = (self.loading_angle + 10) % 360
-        self.root.after(50, self.animate_loading)
 
     def check_internet_connection(self):
         try:
-            # Check connectivity by pinging a reliable server
             subprocess.run(["ping", "-c", "1", "google.com"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             return True
         except subprocess.CalledProcessError:
@@ -190,6 +266,9 @@ class SpeedTestApp:
         self.upload_button.config(state="normal")
         self.ping_button.config(state="normal")
 
+        # Stop loading animation
+        self.stop_loading()
+
         if "error" in results:
             # Display error message in the GUI
             self.download_speed.set("Error")
@@ -213,6 +292,9 @@ class SpeedTestApp:
         self.download_speed.set("0.0 Mbps")
         self.upload_speed.set("0.0 Mbps")
         self.ping.set("0 ms")
+
+        # Start loading animation
+        self.start_loading()
 
         # Run the speed test in a separate thread
         threading.Thread(target=lambda: self.run_speedtest(args)).start()
