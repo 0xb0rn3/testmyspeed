@@ -187,11 +187,14 @@ class SpeedTestApp:
             # Parse the output
             results = {}
             for line in output.split("\n"):
-                key, value = line.split(": ")
-                results[key.lower()] = value
+                if ": " in line:
+                    key, value = line.split(": ", 1)
+                    results[key.lower()] = value.strip()
 
             # Update the GUI with parsed results
             self.root.after(0, self.update_result, results)
+        except subprocess.CalledProcessError as e:
+            self.root.after(0, self.update_result, {"error": e.stderr.strip()})
         except Exception as e:
             self.root.after(0, self.update_result, {"error": str(e)})
 
@@ -205,7 +208,7 @@ class SpeedTestApp:
         if "error" in results:
             self.download_speed.set("Error")
             self.upload_speed.set("Error")
-            self.ping.set("Error")
+            self.ping.set(results["error"])
         else:
             # Update results based on the test type
             self.download_speed.set(results.get("download", "N/A"))
