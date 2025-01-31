@@ -10,10 +10,17 @@ class SpeedTestApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Network Speed Test")
-        self.root.geometry("400x200")
+        self.root.geometry("500x300")
+        self.root.resizable(False, False)
         self.create_widgets()
 
     def create_widgets(self):
+        # Styling
+        style = ttk.Style()
+        style.configure("TLabel", font=("Helvetica", 12))
+        style.configure("TButton", font=("Helvetica", 12), padding=5)
+        style.configure("Result.TLabel", font=("Helvetica", 14, "bold"), foreground="green")
+
         # Create and place widgets
         self.label = ttk.Label(self.root, text="Press 'Start Test' to measure speed.")
         self.label.pack(pady=10)
@@ -21,28 +28,41 @@ class SpeedTestApp:
         self.start_button = ttk.Button(self.root, text="Start Test", command=self.start_test)
         self.start_button.pack(pady=5)
 
-        self.progress = ttk.Progressbar(self.root, orient="horizontal", mode="indeterminate")
-        self.progress.pack(pady=10, fill="x")
+        self.progress = ttk.Progressbar(self.root, orient="horizontal", mode="indeterminate", length=400)
+        self.progress.pack(pady=10)
 
-        self.result_label = ttk.Label(self.root, text="")
-        self.result_label.pack(pady=10)
+        self.result_frame = ttk.Frame(self.root)
+        self.result_frame.pack(pady=10)
+
+        self.download_label = ttk.Label(self.result_frame, text="Download: N/A", style="Result.TLabel")
+        self.download_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+
+        self.upload_label = ttk.Label(self.result_frame, text="Upload: N/A", style="Result.TLabel")
+        self.upload_label.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+
+        self.ping_label = ttk.Label(self.result_frame, text="Ping: N/A", style="Result.TLabel")
+        self.ping_label.grid(row=2, column=0, padx=10, pady=5, sticky="w")
 
     def start_test(self):
         # Check if speedtest-cli is installed in the virtual environment
         if not self.is_speedtest_installed():
-            self.result_label.config(text="Setting up virtual environment...")
+            self.label.config(text="Setting up virtual environment...")
             self.setup_virtualenv()
         
         # Disable the button and start the progress bar
         self.start_button.config(state="disabled")
         self.progress.start()
-        self.result_label.config(text="Testing...")
+        self.label.config(text="Testing...")
+
+        # Clear previous results
+        self.download_label.config(text="Download: N/A")
+        self.upload_label.config(text="Upload: N/A")
+        self.ping_label.config(text="Ping: N/A")
 
         # Run the speed test in a separate thread
         threading.Thread(target=self.run_speedtest).start()
 
     def is_speedtest_installed(self):
-        # Check if speedtest-cli is installed in the virtual environment
         venv_python = os.path.join(os.getcwd(), "venv", "bin", "python")
         if not os.path.exists(venv_python):
             return False
@@ -54,14 +74,11 @@ class SpeedTestApp:
 
     def setup_virtualenv(self):
         try:
-            # Create a virtual environment
             subprocess.run([sys.executable, '-m', 'venv', 'venv'], check=True)
-
-            # Install speedtest-cli in the virtual environment
             venv_pip = os.path.join(os.getcwd(), "venv", "bin", "pip")
             subprocess.run([venv_pip, 'install', 'speedtest-cli'], check=True)
         except subprocess.CalledProcessError as e:
-            self.result_label.config(text=f"Failed to set up virtual environment: {e}")
+            self.label.config(text=f"Failed to set up virtual environment: {e}")
             self.start_button.config(state="normal")
             return
 
@@ -69,21 +86,37 @@ class SpeedTestApp:
         try:
             # Use the virtual environment's Python to run speedtest-cli
             venv_python = os.path.join(os.getcwd(), "venv", "bin", "python")
-            result = subprocess.run([venv_python, '-m', 'speedtest', '--simple'], capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                [venv_python, '-m', 'speedtest', '--simple'],
+                capture_output=True,
+                text=True,
+                check=True
+            )
             output = result.stdout.strip()
-        except FileNotFoundError:
-            output = "Error: Failed to run speedtest-cli. Please check the virtual environment."
-        except subprocess.CalledProcessError as e:
-            output = f"Error: {e.stderr.strip()}"
 
-        # Update the result label with the test results
-        self.root.after(0, self.update_result, output)
+            # Parse the output
+            results = {}
+            for line in output.split("\n"):
+                key, value = line.split(": ")
+                results[key.lower()] = value
 
-    def update_result(self, output):
+            # Update the GUI with parsed results
+            self.root.after(0, self.update_result, results)
+        except Exception as e:
+            self.root.after(0, self.update_result, {"error": str(e)})
+
+    def update_result(self, results):
         # Stop the progress bar and re-enable the button
         self.progress.stop()
         self.start_button.config(state="normal")
-        self.result_label.config(text=output)
+
+        if "error" in results:
+            self.label.config(text=f"Error: {results['error']}")
+        else:
+            self.label.config(text="Speed Test Completed!")
+            self.download_label.config(text=f"Download: {results.get('download', 'N/A')}")
+            self.upload_label.config(text=f"Upload: {results.get('upload', 'N/A')}")
+            self.ping_label.config(text=f"Ping: {results.get('ping', 'N/A')}")
 
 def main():
     root = tk.Tk()
