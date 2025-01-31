@@ -5,82 +5,122 @@ import subprocess
 import threading
 import sys
 import os
+from tkinter import font
 
 class SpeedTestApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Network Speed Test")
-        self.root.geometry("500x300")
+        self.root.title("Internet Speed Test")
+        self.root.geometry("600x400")
         self.root.resizable(False, False)
+        self.root.configure(bg="#1e1e2f")  # Dark background
+
+        # Custom Fonts
+        self.title_font = font.Font(family="Helvetica", size=18, weight="bold")
+        self.result_font = font.Font(family="Helvetica", size=16)
+
+        # Initialize variables
+        self.download_speed = tk.StringVar(value="0.0 Mbps")
+        self.upload_speed = tk.StringVar(value="0.0 Mbps")
+        self.ping = tk.StringVar(value="0 ms")
+
         self.create_widgets()
 
     def create_widgets(self):
-        # Styling
-        style = ttk.Style()
-        style.configure("TLabel", font=("Helvetica", 12))
-        style.configure("TButton", font=("Helvetica", 12), padding=5)
-        style.configure("Result.TLabel", font=("Helvetica", 14, "bold"), foreground="green")
+        # Title Label
+        title_label = tk.Label(
+            self.root,
+            text="Internet Speed Test",
+            font=self.title_font,
+            bg="#1e1e2f",
+            fg="#ffffff"
+        )
+        title_label.pack(pady=20)
 
-        # Create and place widgets
-        self.label = ttk.Label(self.root, text="Press 'Start Test' to measure speed.")
-        self.label.pack(pady=10)
+        # Circular Progress Indicator
+        self.progress_canvas = tk.Canvas(self.root, width=150, height=150, bg="#1e1e2f", highlightthickness=0)
+        self.progress_canvas.pack(pady=20)
+        self.progress_arc = self.progress_canvas.create_arc(
+            10, 10, 140, 140,
+            start=0,
+            extent=0,
+            outline="#6a0dad",
+            width=10,
+            style="arc"
+        )
 
-        self.start_button = ttk.Button(self.root, text="Start Test", command=self.start_test)
-        self.start_button.pack(pady=5)
+        # Start Test Button
+        self.start_button = tk.Button(
+            self.root,
+            text="Start Test",
+            font=("Helvetica", 14),
+            bg="#6a0dad",
+            fg="#ffffff",
+            activebackground="#4b0082",
+            activeforeground="#ffffff",
+            relief="flat",
+            command=self.start_test
+        )
+        self.start_button.pack(pady=10)
 
-        self.progress = ttk.Progressbar(self.root, orient="horizontal", mode="indeterminate", length=400)
-        self.progress.pack(pady=10)
+        # Results Frame
+        results_frame = tk.Frame(self.root, bg="#1e1e2f")
+        results_frame.pack(pady=20)
 
-        self.result_frame = ttk.Frame(self.root)
-        self.result_frame.pack(pady=10)
+        # Download Icon and Label
+        download_icon = tk.Label(results_frame, text="⬇️", font=("Arial", 20), bg="#1e1e2f", fg="#ffffff")
+        download_icon.grid(row=0, column=0, padx=10)
+        self.download_label = tk.Label(
+            results_frame,
+            textvariable=self.download_speed,
+            font=self.result_font,
+            bg="#1e1e2f",
+            fg="#6a0dad"
+        )
+        self.download_label.grid(row=0, column=1, padx=10)
 
-        self.download_label = ttk.Label(self.result_frame, text="Download: N/A", style="Result.TLabel")
-        self.download_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        # Upload Icon and Label
+        upload_icon = tk.Label(results_frame, text="⬆️", font=("Arial", 20), bg="#1e1e2f", fg="#ffffff")
+        upload_icon.grid(row=1, column=0, padx=10)
+        self.upload_label = tk.Label(
+            results_frame,
+            textvariable=self.upload_speed,
+            font=self.result_font,
+            bg="#1e1e2f",
+            fg="#6a0dad"
+        )
+        self.upload_label.grid(row=1, column=1, padx=10)
 
-        self.upload_label = ttk.Label(self.result_frame, text="Upload: N/A", style="Result.TLabel")
-        self.upload_label.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        # Ping Icon and Label
+        ping_icon = tk.Label(results_frame, text="🏓", font=("Arial", 20), bg="#1e1e2f", fg="#ffffff")
+        ping_icon.grid(row=2, column=0, padx=10)
+        self.ping_label = tk.Label(
+            results_frame,
+            textvariable=self.ping,
+            font=self.result_font,
+            bg="#1e1e2f",
+            fg="#6a0dad"
+        )
+        self.ping_label.grid(row=2, column=1, padx=10)
 
-        self.ping_label = ttk.Label(self.result_frame, text="Ping: N/A", style="Result.TLabel")
-        self.ping_label.grid(row=2, column=0, padx=10, pady=5, sticky="w")
+    def animate_progress(self, current, target):
+        if current < target:
+            current += (target - current) / 10  # Smooth increment
+            self.progress_canvas.itemconfig(self.progress_arc, extent=current * 3.6)  # Map percentage to degrees
+            self.root.after(50, lambda: self.animate_progress(current, target))
+        else:
+            self.progress_canvas.itemconfig(self.progress_arc, extent=target * 3.6)
 
     def start_test(self):
-        # Check if speedtest-cli is installed in the virtual environment
-        if not self.is_speedtest_installed():
-            self.label.config(text="Setting up virtual environment...")
-            self.setup_virtualenv()
-        
-        # Disable the button and start the progress bar
+        # Disable the button and reset results
         self.start_button.config(state="disabled")
-        self.progress.start()
-        self.label.config(text="Testing...")
-
-        # Clear previous results
-        self.download_label.config(text="Download: N/A")
-        self.upload_label.config(text="Upload: N/A")
-        self.ping_label.config(text="Ping: N/A")
+        self.download_speed.set("0.0 Mbps")
+        self.upload_speed.set("0.0 Mbps")
+        self.ping.set("0 ms")
+        self.animate_progress(0, 100)  # Start progress animation
 
         # Run the speed test in a separate thread
         threading.Thread(target=self.run_speedtest).start()
-
-    def is_speedtest_installed(self):
-        venv_python = os.path.join(os.getcwd(), "venv", "bin", "python")
-        if not os.path.exists(venv_python):
-            return False
-        try:
-            subprocess.run([venv_python, '-m', 'speedtest'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-            return True
-        except FileNotFoundError:
-            return False
-
-    def setup_virtualenv(self):
-        try:
-            subprocess.run([sys.executable, '-m', 'venv', 'venv'], check=True)
-            venv_pip = os.path.join(os.getcwd(), "venv", "bin", "pip")
-            subprocess.run([venv_pip, 'install', 'speedtest-cli'], check=True)
-        except subprocess.CalledProcessError as e:
-            self.label.config(text=f"Failed to set up virtual environment: {e}")
-            self.start_button.config(state="normal")
-            return
 
     def run_speedtest(self):
         try:
@@ -106,17 +146,36 @@ class SpeedTestApp:
             self.root.after(0, self.update_result, {"error": str(e)})
 
     def update_result(self, results):
-        # Stop the progress bar and re-enable the button
-        self.progress.stop()
+        # Stop the progress animation
+        self.animate_progress(100, 0)
+
+        # Re-enable the button
         self.start_button.config(state="normal")
 
         if "error" in results:
-            self.label.config(text=f"Error: {results['error']}")
+            self.download_speed.set("Error")
+            self.upload_speed.set("Error")
+            self.ping.set("Error")
         else:
-            self.label.config(text="Speed Test Completed!")
-            self.download_label.config(text=f"Download: {results.get('download', 'N/A')}")
-            self.upload_label.config(text=f"Upload: {results.get('upload', 'N/A')}")
-            self.ping_label.config(text=f"Ping: {results.get('ping', 'N/A')}")
+            # Animate results
+            self.animate_value(self.download_speed, "0.0 Mbps", f"{results.get('download', '0.0')} Mbps")
+            self.animate_value(self.upload_speed, "0.0 Mbps", f"{results.get('upload', '0.0')} Mbps")
+            self.animate_value(self.ping, "0 ms", f"{results.get('ping', '0')} ms")
+
+    def animate_value(self, var, start, end, duration=1000, steps=50):
+        """Animate a value from start to end."""
+        start_val = float(start.split()[0])
+        end_val = float(end.split()[0])
+        step_size = (end_val - start_val) / steps
+        delay = duration // steps
+
+        def update(step):
+            if step <= steps:
+                current_val = start_val + step * step_size
+                var.set(f"{current_val:.1f} {end.split()[1]}")
+                self.root.after(delay, lambda: update(step + 1))
+
+        update(0)
 
 def main():
     root = tk.Tk()
