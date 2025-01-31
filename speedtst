@@ -6,12 +6,13 @@ import threading
 import sys
 import os
 from tkinter import font
+from tkinter import messagebox
 
 class SpeedTestApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Internet Speed Test")
-        self.root.geometry("500x600")  # Adjusted for new features
+        self.root.geometry("500x600")
         self.root.resizable(False, False)
         self.root.configure(bg="#121212")  # Full dark mode background
 
@@ -145,19 +146,60 @@ class SpeedTestApp:
         self.loading_angle = (self.loading_angle + 10) % 360
         self.root.after(50, self.animate_loading)
 
-    def run_full_test(self):
-        self.start_test(["--simple"])
+    def check_dependencies(self):
+        try:
+            subprocess.run([sys.executable, "-m", "speedtest", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            return True
+        except FileNotFoundError:
+            return False
 
-    def run_download_test(self):
-        self.start_test(["--no-upload", "--simple"])
+    def install_dependencies(self):
+        # Create a popup window for dependency installation
+        popup = tk.Toplevel(self.root)
+        popup.title("Install Dependencies")
+        popup.geometry("400x200")
+        popup.configure(bg="#1e1e2f")
+        popup.resizable(False, False)
 
-    def run_upload_test(self):
-        self.start_test(["--no-download", "--simple"])
+        label = tk.Label(popup, text="Installing dependencies...", font=self.sub_font, bg="#1e1e2f", fg="#ffffff")
+        label.pack(pady=20)
 
-    def run_ping_test(self):
-        self.start_test(["--no-download", "--no-upload", "--simple"])
+        progress = ttk.Progressbar(popup, orient="horizontal", mode="indeterminate", length=300)
+        progress.pack(pady=10)
+        progress.start()
+
+        def install():
+            try:
+                # Install speedtest-cli with --break-system-packages
+                subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "speedtest-cli", "--break-system-packages"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=True
+                )
+                popup.destroy()
+                messagebox.showinfo("Success", "Dependencies installed successfully!", parent=self.root)
+            except subprocess.CalledProcessError as e:
+                popup.destroy()
+                messagebox.showerror("Error", f"Failed to install dependencies:\n{e.stderr.decode()}", parent=self.root)
+
+        threading.Thread(target=install).start()
 
     def start_test(self, args):
+        if not self.check_dependencies():
+            # Prompt user to install dependencies
+            confirm = messagebox.askyesno(
+                "Install Dependencies",
+                "Required dependencies are missing. Install them now?",
+                parent=self.root
+            )
+            if confirm:
+                self.install_dependencies()
+                return
+            else:
+                messagebox.showwarning("Warning", "Cannot proceed without dependencies.", parent=self.root)
+                return
+
         # Disable all buttons during the test
         self.full_test_button.config(state="disabled")
         self.download_button.config(state="disabled")
@@ -172,12 +214,22 @@ class SpeedTestApp:
         # Run the speed test in a separate thread
         threading.Thread(target=lambda: self.run_speedtest(args)).start()
 
+    def run_full_test(self):
+        self.start_test(["--simple"])
+
+    def run_download_test(self):
+        self.start_test(["--no-upload", "--simple"])
+
+    def run_upload_test(self):
+        self.start_test(["--no-download", "--simple"])
+
+    def run_ping_test(self):
+        self.start_test(["--no-download", "--no-upload", "--simple"])
+
     def run_speedtest(self, args):
         try:
-            # Use the virtual environment's Python to run speedtest-cli
-            venv_python = os.path.join(os.getcwd(), "venv", "bin", "python")
             result = subprocess.run(
-                [venv_python, '-m', 'speedtest'] + args,
+                [sys.executable, "-m", "speedtest"] + args,
                 capture_output=True,
                 text=True,
                 check=True
