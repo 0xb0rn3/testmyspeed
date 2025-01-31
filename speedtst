@@ -11,13 +11,14 @@ class SpeedTestApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Internet Speed Test")
-        self.root.geometry("600x400")
+        self.root.geometry("400x500")  # Smaller and taller window
         self.root.resizable(False, False)
         self.root.configure(bg="#1e1e2f")  # Dark background
 
         # Custom Fonts
-        self.title_font = font.Font(family="Helvetica", size=18, weight="bold")
-        self.result_font = font.Font(family="Helvetica", size=16)
+        self.title_font = font.Font(family="Helvetica", size=20, weight="bold")
+        self.result_font = font.Font(family="Helvetica", size=18, weight="bold")
+        self.sub_font = font.Font(family="Helvetica", size=14)
 
         # Initialize variables
         self.download_speed = tk.StringVar(value="0.0 Mbps")
@@ -30,24 +31,18 @@ class SpeedTestApp:
         # Title Label
         title_label = tk.Label(
             self.root,
-            text="Internet Speed Test",
+            text="Speed Test",
             font=self.title_font,
             bg="#1e1e2f",
             fg="#ffffff"
         )
-        title_label.pack(pady=20)
+        title_label.pack(pady=(20, 10))
 
-        # Circular Progress Indicator
-        self.progress_canvas = tk.Canvas(self.root, width=150, height=150, bg="#1e1e2f", highlightthickness=0)
-        self.progress_canvas.pack(pady=20)
-        self.progress_arc = self.progress_canvas.create_arc(
-            10, 10, 140, 140,
-            start=0,
-            extent=0,
-            outline="#6a0dad",
-            width=10,
-            style="arc"
-        )
+        # Spinner Animation
+        self.spinner_canvas = tk.Canvas(self.root, width=100, height=100, bg="#1e1e2f", highlightthickness=0)
+        self.spinner_canvas.pack(pady=10)
+        self.spinner_angle = 0
+        self.animate_spinner()
 
         # Start Test Button
         self.start_button = tk.Button(
@@ -59,7 +54,11 @@ class SpeedTestApp:
             activebackground="#4b0082",
             activeforeground="#ffffff",
             relief="flat",
-            command=self.start_test
+            command=self.start_test,
+            padx=20,
+            pady=10,
+            borderwidth=0,
+            highlightthickness=0
         )
         self.start_button.pack(pady=10)
 
@@ -68,8 +67,8 @@ class SpeedTestApp:
         results_frame.pack(pady=20)
 
         # Download Icon and Label
-        download_icon = tk.Label(results_frame, text="⬇️", font=("Arial", 20), bg="#1e1e2f", fg="#ffffff")
-        download_icon.grid(row=0, column=0, padx=10)
+        download_icon = tk.Label(results_frame, text="⬇️", font=("Arial", 18), bg="#1e1e2f", fg="#6a0dad")
+        download_icon.grid(row=0, column=0, padx=10, pady=5, sticky="w")
         self.download_label = tk.Label(
             results_frame,
             textvariable=self.download_speed,
@@ -77,11 +76,11 @@ class SpeedTestApp:
             bg="#1e1e2f",
             fg="#6a0dad"
         )
-        self.download_label.grid(row=0, column=1, padx=10)
+        self.download_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
 
         # Upload Icon and Label
-        upload_icon = tk.Label(results_frame, text="⬆️", font=("Arial", 20), bg="#1e1e2f", fg="#ffffff")
-        upload_icon.grid(row=1, column=0, padx=10)
+        upload_icon = tk.Label(results_frame, text="⬆️", font=("Arial", 18), bg="#1e1e2f", fg="#6a0dad")
+        upload_icon.grid(row=1, column=0, padx=10, pady=5, sticky="w")
         self.upload_label = tk.Label(
             results_frame,
             textvariable=self.upload_speed,
@@ -89,11 +88,11 @@ class SpeedTestApp:
             bg="#1e1e2f",
             fg="#6a0dad"
         )
-        self.upload_label.grid(row=1, column=1, padx=10)
+        self.upload_label.grid(row=1, column=1, padx=10, pady=5, sticky="w")
 
         # Ping Icon and Label
-        ping_icon = tk.Label(results_frame, text="🏓", font=("Arial", 20), bg="#1e1e2f", fg="#ffffff")
-        ping_icon.grid(row=2, column=0, padx=10)
+        ping_icon = tk.Label(results_frame, text="🏓", font=("Arial", 18), bg="#1e1e2f", fg="#6a0dad")
+        ping_icon.grid(row=2, column=0, padx=10, pady=5, sticky="w")
         self.ping_label = tk.Label(
             results_frame,
             textvariable=self.ping,
@@ -101,15 +100,21 @@ class SpeedTestApp:
             bg="#1e1e2f",
             fg="#6a0dad"
         )
-        self.ping_label.grid(row=2, column=1, padx=10)
+        self.ping_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
 
-    def animate_progress(self, current, target):
-        if current < target:
-            current += (target - current) / 10  # Smooth increment
-            self.progress_canvas.itemconfig(self.progress_arc, extent=current * 3.6)  # Map percentage to degrees
-            self.root.after(50, lambda: self.animate_progress(current, target))
-        else:
-            self.progress_canvas.itemconfig(self.progress_arc, extent=target * 3.6)
+    def animate_spinner(self):
+        # Create a rotating arc for the spinner
+        self.spinner_canvas.delete("all")
+        self.spinner_canvas.create_arc(
+            10, 10, 90, 90,
+            start=self.spinner_angle,
+            extent=60,
+            outline="#6a0dad",
+            width=6,
+            style="arc"
+        )
+        self.spinner_angle = (self.spinner_angle + 10) % 360
+        self.root.after(50, self.animate_spinner)
 
     def start_test(self):
         # Disable the button and reset results
@@ -117,7 +122,6 @@ class SpeedTestApp:
         self.download_speed.set("0.0 Mbps")
         self.upload_speed.set("0.0 Mbps")
         self.ping.set("0 ms")
-        self.animate_progress(0, 100)  # Start progress animation
 
         # Run the speed test in a separate thread
         threading.Thread(target=self.run_speedtest).start()
@@ -146,9 +150,6 @@ class SpeedTestApp:
             self.root.after(0, self.update_result, {"error": str(e)})
 
     def update_result(self, results):
-        # Stop the progress animation
-        self.animate_progress(100, 0)
-
         # Re-enable the button
         self.start_button.config(state="normal")
 
