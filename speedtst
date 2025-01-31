@@ -13,7 +13,7 @@ class SpeedTestApp:
         self.root.title("Internet Speed Test")
         self.root.geometry("400x500")  # Smaller and taller window
         self.root.resizable(False, False)
-        self.root.configure(bg="#1e1e2f")  # Dark background
+        self.root.configure(bg="#121212")  # Full dark mode background
 
         # Custom Fonts
         self.title_font = font.Font(family="Helvetica", size=20, weight="bold")
@@ -33,25 +33,25 @@ class SpeedTestApp:
             self.root,
             text="Speed Test",
             font=self.title_font,
-            bg="#1e1e2f",
+            bg="#121212",
             fg="#ffffff"
         )
         title_label.pack(pady=(20, 10))
 
-        # Spinner Animation
-        self.spinner_canvas = tk.Canvas(self.root, width=100, height=100, bg="#1e1e2f", highlightthickness=0)
-        self.spinner_canvas.pack(pady=10)
-        self.spinner_angle = 0
-        self.animate_spinner()
+        # Loading Animation Canvas
+        self.loading_canvas = tk.Canvas(self.root, width=120, height=120, bg="#121212", highlightthickness=0)
+        self.loading_canvas.pack(pady=10)
+        self.loading_angle = 0
+        self.animate_loading()
 
         # Start Test Button
         self.start_button = tk.Button(
             self.root,
             text="Start Test",
             font=("Helvetica", 14),
-            bg="#6a0dad",
-            fg="#ffffff",
-            activebackground="#4b0082",
+            bg="#bb86fc",  # Vibrant purple for contrast
+            fg="#121212",
+            activebackground="#3700b3",
             activeforeground="#ffffff",
             relief="flat",
             command=self.start_test,
@@ -63,58 +63,58 @@ class SpeedTestApp:
         self.start_button.pack(pady=10)
 
         # Results Frame
-        results_frame = tk.Frame(self.root, bg="#1e1e2f")
-        results_frame.pack(pady=20)
+        self.results_frame = tk.Frame(self.root, bg="#121212")
+        self.results_frame.pack(pady=20)
 
         # Download Icon and Label
-        download_icon = tk.Label(results_frame, text="⬇️", font=("Arial", 18), bg="#1e1e2f", fg="#6a0dad")
+        download_icon = tk.Label(self.results_frame, text="⬇️", font=("Arial", 18), bg="#121212", fg="#bb86fc")
         download_icon.grid(row=0, column=0, padx=10, pady=5, sticky="w")
         self.download_label = tk.Label(
-            results_frame,
+            self.results_frame,
             textvariable=self.download_speed,
             font=self.result_font,
-            bg="#1e1e2f",
-            fg="#6a0dad"
+            bg="#121212",
+            fg="#bb86fc"
         )
         self.download_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
 
         # Upload Icon and Label
-        upload_icon = tk.Label(results_frame, text="⬆️", font=("Arial", 18), bg="#1e1e2f", fg="#6a0dad")
+        upload_icon = tk.Label(self.results_frame, text="⬆️", font=("Arial", 18), bg="#121212", fg="#bb86fc")
         upload_icon.grid(row=1, column=0, padx=10, pady=5, sticky="w")
         self.upload_label = tk.Label(
-            results_frame,
+            self.results_frame,
             textvariable=self.upload_speed,
             font=self.result_font,
-            bg="#1e1e2f",
-            fg="#6a0dad"
+            bg="#121212",
+            fg="#bb86fc"
         )
         self.upload_label.grid(row=1, column=1, padx=10, pady=5, sticky="w")
 
         # Ping Icon and Label
-        ping_icon = tk.Label(results_frame, text="🏓", font=("Arial", 18), bg="#1e1e2f", fg="#6a0dad")
+        ping_icon = tk.Label(self.results_frame, text="🏓", font=("Arial", 18), bg="#121212", fg="#bb86fc")
         ping_icon.grid(row=2, column=0, padx=10, pady=5, sticky="w")
         self.ping_label = tk.Label(
-            results_frame,
+            self.results_frame,
             textvariable=self.ping,
             font=self.result_font,
-            bg="#1e1e2f",
-            fg="#6a0dad"
+            bg="#121212",
+            fg="#bb86fc"
         )
         self.ping_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
 
-    def animate_spinner(self):
-        # Create a rotating arc for the spinner
-        self.spinner_canvas.delete("all")
-        self.spinner_canvas.create_arc(
-            10, 10, 90, 90,
-            start=self.spinner_angle,
-            extent=60,
-            outline="#6a0dad",
-            width=6,
+    def animate_loading(self):
+        # Create a rotating arc with gradient effect for the loading animation
+        self.loading_canvas.delete("all")
+        self.loading_canvas.create_arc(
+            10, 10, 110, 110,
+            start=self.loading_angle,
+            extent=90,
+            outline="#bb86fc",
+            width=8,
             style="arc"
         )
-        self.spinner_angle = (self.spinner_angle + 10) % 360
-        self.root.after(50, self.animate_spinner)
+        self.loading_angle = (self.loading_angle + 10) % 360
+        self.root.after(50, self.animate_loading)
 
     def start_test(self):
         # Disable the button and reset results
@@ -158,23 +158,25 @@ class SpeedTestApp:
             self.upload_speed.set("Error")
             self.ping.set("Error")
         else:
-            # Animate results
-            self.animate_value(self.download_speed, "0.0 Mbps", f"{results.get('download', '0.0')} Mbps")
-            self.animate_value(self.upload_speed, "0.0 Mbps", f"{results.get('upload', '0.0')} Mbps")
-            self.animate_value(self.ping, "0 ms", f"{results.get('ping', '0')} ms")
+            # Animate results with fade-in effect
+            self.animate_fade_in(self.download_label, f"{results.get('download', '0.0')} Mbps")
+            self.animate_fade_in(self.upload_label, f"{results.get('upload', '0.0')} Mbps")
+            self.animate_fade_in(self.ping_label, f"{results.get('ping', '0')} ms")
 
-    def animate_value(self, var, start, end, duration=1000, steps=50):
-        """Animate a value from start to end."""
-        start_val = float(start.split()[0])
-        end_val = float(end.split()[0])
-        step_size = (end_val - start_val) / steps
+    def animate_fade_in(self, widget, target_value, duration=1000, steps=50):
+        """Animate a widget's text with a fade-in effect."""
+        current_alpha = 0
+        step_size = 255 // steps
         delay = duration // steps
 
         def update(step):
+            nonlocal current_alpha
             if step <= steps:
-                current_val = start_val + step * step_size
-                var.set(f"{current_val:.1f} {end.split()[1]}")
-                self.root.after(delay, lambda: update(step + 1))
+                current_alpha += step_size
+                widget.config(fg=f"#{current_alpha:02x}{current_alpha:02x}{current_alpha:02x}")
+                widget.after(delay, lambda: update(step + 1))
+            else:
+                widget.config(text=target_value, fg="#bb86fc")
 
         update(0)
 
