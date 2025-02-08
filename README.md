@@ -2,8 +2,6 @@
 
 N3tbit is a comprehensive network testing and anonymization tool designed for Linux systems. It provides an intuitive interface for speed testing, network diagnostics, and basic anonymization features through Tor integration.
 
-![N3tbit Banner](screenshots/banner.png)
-
 ## Features
 
 N3tbit combines powerful networking tools with a user-friendly interface to provide:
